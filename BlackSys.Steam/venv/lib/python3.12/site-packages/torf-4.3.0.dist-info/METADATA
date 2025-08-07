@@ -1,0 +1,108 @@
+Metadata-Version: 2.2
+Name: torf
+Version: 4.3.0
+Summary: Python 3 module for creating and parsing torrent files and magnet URIs
+Author-email: Random User <rndusr@posteo.de>
+License: GPL-3.0-or-later
+Project-URL: Repository, https://github.com/rndusr/torf
+Project-URL: Documentation, https://torf.readthedocs.io/
+Project-URL: Bug Tracker, https://github.com/rndusr/torf/issues
+Project-URL: Changelog, https://raw.githubusercontent.com/rndusr/torf/master/CHANGELOG
+Keywords: bittorrent,torrent,magnet
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Topic :: Software Development :: Libraries
+Requires-Python: >=3.8
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+Requires-Dist: flatbencode==0.2.*
+Provides-Extra: dev
+Requires-Dist: pytest; extra == "dev"
+Requires-Dist: pytest-xdist; extra == "dev"
+Requires-Dist: pytest-httpserver; extra == "dev"
+Requires-Dist: pytest-mock; extra == "dev"
+Requires-Dist: tox; extra == "dev"
+Requires-Dist: coverage; extra == "dev"
+Requires-Dist: pytest-cov; extra == "dev"
+Requires-Dist: ruff; extra == "dev"
+Requires-Dist: flake8; extra == "dev"
+Requires-Dist: isort; extra == "dev"
+Requires-Dist: mypy; extra == "dev"
+
+torf
+====
+
+torf provides a ``Torrent`` and a ``Magnet`` class.
+
+`torf-cli <https://github.com/rndusr/torf-cli>`_ and `torf-gui
+<https://github.com/SavageCore/torf-gui>`_ provide user interfaces for torf.
+
+This project started as a fork of `dottorrent
+<https://github.com/kz26/dottorrent>`_ but turned into a rewrite.
+
+Features
+--------
+
+- Create a ``Torrent`` instance from a path to the torrent's content or by
+  reading an existing ``.torrent`` file
+- High-level access to standard metainfo fields via properties
+- Low-level access to arbitrary metainfo fields via ``metainfo`` property
+- Optional metainfo validation with helpful error messages
+- Generate a `BTIH magnet URI
+  <https://en.wikipedia.org/wiki/Magnet_URI_scheme>`_ from a ``.torrent`` file
+  (the reverse is also possible but the resulting torrent is incomplete due to
+  the lack of information in magnet URIs)
+- Use multiple CPU cores to compute piece hashes
+- Randomize the info hash to help with cross-seeding
+- Conveniently re-use piece hashes from an existing torrent file
+
+Example
+-------
+
+.. code:: python
+
+    from torf import Torrent
+    t = Torrent(path='path/to/content',
+                trackers=['https://tracker1.example.org:1234/announce',
+                          'https://tracker2.example.org:5678/announce'],
+                comment='This is a comment')
+    t.private = True
+    t.generate()
+    t.write('my.torrent')
+
+Documentation
+-------------
+
+Everything should be explained in the docstrings. Read it with ``pydoc3
+torf.Torrent`` or ``pydoc3 torf.Magnet``.
+
+Documentation is also available at `torf.readthedocs.io
+<https://torf.readthedocs.io/>`_ or `torf.readthedocs.io/en/latest
+<https://torf.readthedocs.io/en/latest>`_ for the development version.
+
+Installation
+------------
+
+torf is available on `PyPI <https://pypi.org/project/torf>`_.
+
+The latest development version is in the master branch on `GitHub
+<https://github.com/rndusr/torf>`_.
+
+Contributing
+------------
+
+I consider this project feature complete, but feel free to request new features
+or improvements. Bug reports are always welcome, of course.
+
+License
+-------
+
+`GPLv3+ <https://www.gnu.org/licenses/gpl-3.0.en.html>`_
