@@ -4,14 +4,75 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+import mutagen
+from mutagen.flac import FLAC
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, TPE1, TPE2, TALB, TCOM, TCON, TRCK, TPOS, TYER, TSRC, TPUB, COMM, TEXT, TBPM, TXXX, APIC
 
 # === CONFIG ===
-FLAC2MP3_SCRIPT = './flac2mp3.pl'
 INPUT_DIR = Path('../flac')
 OUTPUT_DIR = Path('../mp3')
-#OUTPUT_DIR = Path('/mnt/ggn_fl/red_uploads_dl')
 TORRENT_DIR = Path('../torrents')
 TRACKER_FILE = Path("trackers.json")
+FLAC_CMD = 'flac'
+LAME_CMD = 'lame'
+
+# LAME encoding presets
+PRESETS = {
+    'V0': ['--noreplaygain', '--vbr-new', '-V', '0', '-h', '--nohist', '--quiet'],
+    'V2': ['--noreplaygain', '--vbr-new', '-V', '2', '-h', '--nohist', '--quiet'],
+    '320': ['--noreplaygain', '-b', '320', '-h', '--nohist', '--quiet']
+}
+
+# Mapping of FLAC tags to MP3 ID3 frames
+MP3_FRAMES = {
+    'ALBUM': 'TALW',
+    'ALBUMARTIST': 'TPE2',
+    'ARTIST': 'TPE1',
+    'BAND': 'TPE2',
+    'BPM': 'TBPM',
+    'COMMENT': 'COMM',
+    'COMPILATION': 'TCMP',
+    'COMPOSER': 'TCOM',
+    'CONDUCTOR': 'TPE3',
+    'DATE': 'TYER',
+    'DISCNUMBER': 'TPOS',
+    'GENRE': 'TCON',
+    'ISRC': 'TSRC',
+    'LYRICIST': 'TEXT',
+    'PUBLISHER': 'TPUB',
+    'TITLE': 'TIT2',
+    'TRACKNUMBER': 'TRCK',
+    'MUSICBRAINZ_ALBUMID': 'TXXX',
+    'MUSICBRAINZ_ALBUMSTATUS': 'TXXX',
+    'MUSICBRAINZ_ALBUMTYPE': 'TXXX',
+    'MUSICBRAINZ_ARTISTID': 'TXXX',
+    'MUSICBRAINZ_SORTNAME': 'TXXX',
+    'MUSICBRAINZ_TRACKID': 'UFID',
+    'MUSICBRAINZ_TRMID': 'TXXX',
+    'MD5': 'TXXX',
+    'REPLAYGAIN_TRACK_PEAK': 'TXXX',
+    'REPLAYGAIN_TRACK_GAIN': 'TXXX',
+    'REPLAYGAIN_ALBUM_PEAK': 'TXXX',
+    'REPLAYGAIN_ALBUM_GAIN': 'TXXX',
+}
+
+MP3_FRAME_TEXTS = {
+    'COMMENT': '',
+    'MD5': 'MD5',
+    'MUSICBRAINZ_ALBUMARTISTID': 'MusicBrainz Album Artist Id',
+    'MUSICBRAINZ_ALBUMID': 'MusicBrainz Album Id',
+    'MUSICBRAINZ_ALBUMSTATUS': 'MusicBrainz Album Status',
+    'MUSICBRAINZ_ALBUMTYPE': 'MusicBrainz Album Type',
+    'MUSICBRAINZ_ARTISTID': 'MusicBrainz Artist Id',
+    'MUSICBRAINZ_SORTNAME': 'MusicBrainz Sortname',
+    'MUSICBRAINZ_TRACKID': 'MusicBrainz Trackid',
+    'MUSICBRAINZ_TRMID': 'MusicBrainz TRM Id',
+    'REPLAYGAIN_TRACK_PEAK': 'REPLAYGAIN_TRACK_PEAK',
+    'REPLAYGAIN_TRACK_GAIN': 'REPLAYGAIN_TRACK_GAIN',
+    'REPLAYGAIN_ALBUM_PEAK': 'REPLAYGAIN_ALBUM_PEAK',
+    'REPLAYGAIN_ALBUM_GAIN': 'REPLAYGAIN_ALBUM_GAIN',
+}
 
 # === TRACKER UTILS ===
 def load_trackers():
@@ -81,16 +142,16 @@ def prompt_conversion_choice(folder_name):
     print(" 4. Skip")
     while True:
         choice = input("Enter choice [1-4]: ").strip()
-        if choice in ('1','2','3','4'):
+        if choice in ('1', '2', '3', '4'):
             break
         print("Invalid, please enter 1, 2, 3, or 4")
 
     create_torrent = 'n'
     tracker_objs = []
-    if choice in ('1','2','3'):
+    if choice in ('1', '2', '3'):
         while True:
             create_torrent = input("Do you want to create a .torrent? (y/n): ").lower()
-            if create_torrent in ('y','n'):
+            if create_torrent in ('y', 'n'):
                 break
             print("Please enter y or n")
         if create_torrent == 'y':
@@ -98,7 +159,7 @@ def prompt_conversion_choice(folder_name):
 
         while True:
             del_src = input("Do you want to delete the flac after transcoding? (y/n): ").lower()
-            if del_src in ('y','n'):
+            if del_src in ('y', 'n'):
                 break
             print("Please enter y or n")
     else:
@@ -107,13 +168,171 @@ def prompt_conversion_choice(folder_name):
     return choice, del_src, create_torrent, tracker_objs
 
 def run_command(command):
-    result = subprocess.run(command, shell=True)
-    return result.returncode == 0
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"Command failed: {command}\nError: {result.stderr}")
+        return False
+    return True
+
+def read_flac_tags(flac_file):
+    try:
+        audio = FLAC(flac_file)
+        tags = {k.upper(): v for k, v in audio.tags.items()} if audio.tags else {}
+        
+        # Get MD5 checksum
+        tags['MD5'] = audio.info.md5_signature.to_bytes(16, 'big').hex().upper()
+        
+        # Get picture data
+        if audio.pictures:
+            tags['PIC'] = audio.pictures
+        return tags
+    except Exception as e:
+        print(f"Error reading tags from {flac_file}: {e}")
+        return {}
+
+def preprocess_flac_tags(tags):
+    tags_to_update = {}
+    for frame, value in tags.items():
+        if frame in MP3_FRAMES:
+            if frame == 'PIC':
+                tags_to_update[frame] = value
+            elif isinstance(value, list):
+                tags_to_update[frame] = '/'.join(str(v) for v in value)
+            else:
+                tags_to_update[frame] = str(value).strip()
+    
+    # Fix track number
+    if 'TRACKNUMBER' in tags_to_update:
+        track_num = tags_to_update['TRACKNUMBER']
+        try:
+            track_num = int(track_num)
+            tags_to_update['TRACKNUMBER'] = f"{track_num:02d}"
+        except ValueError:
+            print(f"Non-numeric TRACKNUMBER: {track_num}")
+    
+    return tags_to_update
+
+def write_mp3_tags(mp3_file, tags_to_update):
+    try:
+        mp3 = MP3(mp3_file, ID3=ID3)
+        if mp3.tags is None:
+            mp3.add_tags()
+        
+        # Clear existing ID3 tags
+        mp3.tags.clear()
+        
+        for frame, value in tags_to_update.items():
+            if not value or frame not in MP3_FRAMES:
+                continue
+            
+            frame_id = MP3_FRAMES[frame]
+            frame_text = MP3_FRAME_TEXTS.get(frame, '')
+            
+            if frame == 'PIC':
+                for pic in value:
+                    mp3.tags.add(APIC(
+                        encoding=3,  # UTF-8
+                        mime=pic.mime_type,
+                        type=pic.type,
+                        desc=pic.description,
+                        data=pic.data
+                    ))
+            elif frame_id == 'COMM':
+                mp3.tags.add(COMM(encoding=3, lang='eng', desc=frame_text, text=value))
+            elif frame_id == 'TXXX':
+                mp3.tags.add(TXXX(encoding=3, desc=frame_text or frame, text=value))
+            elif frame_id == 'UFID':
+                mp3.tags.add(UFID(owner=frame_text, data=value.encode()))
+            elif frame_id == 'TPE1':
+                mp3.tags.add(TPE1(encoding=3, text=value))
+            elif frame_id == 'TPE2':
+                mp3.tags.add(TPE2(encoding=3, text=value))
+            elif frame_id == 'TALB':
+                mp3.tags.add(TALB(encoding=3, text=value))
+            elif frame_id == 'TCOM':
+                mp3.tags.add(TCOM(encoding=3, text=value))
+            elif frame_id == 'TCON':
+                mp3.tags.add(TCON(encoding=3, text=value))
+            elif frame_id == 'TRCK':
+                mp3.tags.add(TRCK(encoding=3, text=value))
+            elif frame_id == 'TPOS':
+                mp3.tags.add(TPOS(encoding=3, text=value))
+            elif frame_id == 'TYER':
+                mp3.tags.add(TYER(encoding=3, text=value))
+            elif frame_id == 'TSRC':
+                mp3.tags.add(TSRC(encoding=3, text=value))
+            elif frame_id == 'TPUB':
+                mp3.tags.add(TPUB(encoding=3, text=value))
+            elif frame_id == 'TEXT':
+                mp3.tags.add(TEXT(encoding=3, text=value))
+            elif frame_id == 'TBPM':
+                mp3.tags.add(TBPM(encoding=3, text=value))
+        
+        mp3.save()
+        return True
+    except Exception as e:
+        print(f"Error writing tags to {mp3_file}: {e}")
+        return False
 
 def convert(flac_path, output_path, preset):
-    cmd = f'"{FLAC2MP3_SCRIPT}" --preset={preset} "{flac_path}" "{output_path}"'
-    print(f"Running: {cmd}")
-    return run_command(cmd)
+    flac_path = Path(flac_path)
+    output_path = Path(output_path)
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    flac_files = [f for f in flac_path.rglob('*.flac') if f.is_file()]
+    if not flac_files:
+        print(f"No FLAC files found in {flac_path}")
+        return False
+    
+    success = True
+    for flac_file in flac_files:
+        rel_path = flac_file.relative_to(flac_path)
+        mp3_file = output_path / rel_path.with_suffix('.mp3')
+        mp3_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Read tags before transcoding
+        tags = read_flac_tags(flac_file)
+        tags_to_update = preprocess_flac_tags(tags)
+        
+        # Transcode using flac | lame pipeline
+        flac_cmd = [FLAC_CMD, '--decode', '--stdout', '--silent', str(flac_file)]
+        lame_cmd = [LAME_CMD] + PRESETS[preset] + ['-', str(mp3_file)]
+        
+        print(f"Transcoding: {flac_file} -> {mp3_file}")
+        try:
+            # Run flac and lame in a pipeline
+            with subprocess.Popen(flac_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as flac_proc:
+                with subprocess.Popen(lame_cmd, stdin=flac_proc.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as lame_proc:
+                    flac_proc.stdout.close()  # Allow flac_proc to receive SIGPIPE if lame_proc exits
+                    _, flac_err = flac_proc.communicate()
+                    _, lame_err = lame_proc.communicate()
+                
+                if flac_proc.returncode != 0:
+                    print(f"FLAC decode failed: {flac_err.decode()}")
+                    success = False
+                    continue
+                if lame_proc.returncode != 0:
+                    print(f"LAME encode failed: {lame_err.decode()}")
+                    success = False
+                    continue
+                
+                # Verify MP3 file exists and is non-empty before writing tags
+                if not mp3_file.exists() or mp3_file.stat().st_size == 0:
+                    print(f"MP3 file {mp3_file} was not created or is empty")
+                    success = False
+                    continue
+                
+                # Write tags to MP3
+                if not write_mp3_tags(mp3_file, tags_to_update):
+                    success = False
+                    continue
+            
+        except Exception as e:
+            print(f"Error transcoding {flac_file}: {e}")
+            success = False
+            continue
+    
+    return success
 
 def copy_images(src, dest):
     for root, _, files in os.walk(src):
@@ -147,12 +366,10 @@ def process_album(flac_folder: Path, choice, del_src, create_torrent_flag, track
     v0_success = mp3_320_success = False
 
     if choice in ('1', '3'):
-        v0_path.mkdir(parents=True, exist_ok=True)
         print("Converting to MP3 V0...")
         v0_success = convert(flac_folder, v0_path, 'V0')
 
     if choice in ('2', '3'):
-        mp3_320_path.mkdir(parents=True, exist_ok=True)
         print("Converting to MP3 320...")
         mp3_320_success = convert(flac_folder, mp3_320_path, '320')
 
@@ -185,8 +402,11 @@ def main():
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     TORRENT_DIR.mkdir(parents=True, exist_ok=True)
 
-    if not Path(FLAC2MP3_SCRIPT).exists():
-        print(f"Missing {FLAC2MP3_SCRIPT}")
+    if shutil.which(FLAC_CMD) is None:
+        print(f"Missing {FLAC_CMD}. Install with: sudo apt install flac")
+        return
+    if shutil.which(LAME_CMD) is None:
+        print(f"Missing {LAME_CMD}. Install with: sudo apt install lame")
         return
     if shutil.which("mktorrent") is None:
         print("Missing `mktorrent`. Install with: sudo apt install mktorrent")
