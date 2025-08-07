@@ -8,8 +8,8 @@ from pathlib import Path
 # === CONFIG ===
 FLAC2MP3_SCRIPT = './flac2mp3.pl'
 INPUT_DIR = Path('../flac')
-#OUTPUT_DIR = Path('../mp3')
-OUTPUT_DIR = Path('/mnt/ggn_fl/red_uploads_dl')
+OUTPUT_DIR = Path('../mp3')
+#OUTPUT_DIR = Path('/mnt/ggn_fl/red_uploads_dl')
 TORRENT_DIR = Path('../torrents')
 TRACKER_FILE = Path("trackers.json")
 
