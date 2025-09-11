@@ -11,9 +11,9 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, TPE1, TPE2, TALB, TCOM, TCON, TRCK, TPOS, TYER, TSRC, TPUB, COMM, TEXT, TBPM, TXXX, UFID
 
 # === CONFIG ===
-INPUT_DIR = Path('../flac')
-OUTPUT_DIR = Path('../mp3')
-TORRENT_DIR = Path('../torrents')
+INPUT_DIR = Path('./flac')
+OUTPUT_DIR = Path('./mp3')
+TORRENT_DIR = Path('./torrents')
 TRACKER_FILE = Path("trackers.json")
 FLAC_CMD = 'flac'
 LAME_CMD = 'lame'
