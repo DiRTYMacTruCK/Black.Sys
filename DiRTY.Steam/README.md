@@ -1,4 +1,4 @@
-# BlackSys Steam 🚀
+# DiRTY Steam 🚀
 
 
 
@@ -10,15 +10,10 @@ Crack - Crack each version using the Goldberg crack.  Backups cracked files.
 
 Create - Create tor files for your favorite trackers.
 
-## ✨ What’s new 
-- **Fixed steamcmd login:** one `+login` covers **all selected platforms** (Linux/Windows/macOS). No re-auth between platforms.
-- **Cached-first login:** we try `+login <user>` first so your saved sentry/password is used; on failure we prompt **once** and continue the batch.
-- **Auto game name from AppID:** pulled via `+app_info_print <AppID>`.
-
 ---
 ## 📦 Requirements
 
-- **Linux** (tested on Mint/Ubuntu)
+- **Linux** (tested on Debian)
 - **Python 3.8+**
 - **SteamCMD**
   ```bash
@@ -38,7 +33,7 @@ Create - Create tor files for your favorite trackers.
 
 ```
 project/
-├─ blacksys.steam.py
+├─ dirty.steam.py
 ├─ games/
 │  └─ <Game Name>/
 │     ├─ <Game Name>-linux/
@@ -55,24 +50,8 @@ project/
 ## ▶️ Quick start
 
 ```bash
-python3 blacksys.steam.py
+python3 dirty.steam.py
 ```
-
-You’ll see three simple menus:
-
-1) **Are we downloading games from Steam today?**  
-   - If **Yes** → choose **Linux only / Windows only / macOS only / All**, then enter **AppID** and **username**.  
-     - The script attempts **cached login** (`+login <user>`) first (no password/2FA).  
-     - If cached login isn’t available, it prompts **once** for password (and optional guard), then runs **all platform downloads in a single SteamCMD session**.
-   - If **No** → pick an **existing game** under `./games` and continue.
-
-2) **Are we running the crack today?**  
-   - If **Yes** → runs `data/steam_api_replacer.py` 
-
-3) **Do you want to create a .torrent?**  
-   - If **Yes** → opens the **tracker picker/manager**.
-
----
 
 ## 🎮 Step 1 — Download (steamcmd) 
 
@@ -132,9 +111,6 @@ mktorrent -p -a "<comma-separated-announce-urls>" -l 21 -o "<TorrentName>.torren
   e.g., `MyTracker_NEXT_JUMP:_Shmup_Tactics-windows.torrent`
 
 ---
-
-
-
 
 
 ## 📝 Legal

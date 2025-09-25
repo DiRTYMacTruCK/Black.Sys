@@ -1,6 +1,6 @@
-# Black.Sys.FLAC
+# DiRTY.FLAC
 
-A simple Python script to transcode FLAC albums to MP3 formats (320kbps or V0) and optionally create torrent files for sharing. Streamline your music conversion process with ease and flexibility.
+A simple Python script to transcode FLAC albums to MP3 formats (320kbps or V0) and optionally create torrent files for sharing. 
 
 ## ✨ Features
 
@@ -10,6 +10,10 @@ A simple Python script to transcode FLAC albums to MP3 formats (320kbps or V0) a
 - 🧹 **Cleanup Option**: Choose to delete original FLAC files after successful transcoding.
 - 🖥️ **User-Friendly CLI**: Interactive prompts guide you through the transcoding and torrent creation process.
 
+### todo:
+
+- **Flac** - Convert 24bit to 16bit.
+
 ## ⚙️ Requirements
 
 - **Python 3.x**
@@ -18,29 +22,17 @@ A simple Python script to transcode FLAC albums to MP3 formats (320kbps or V0) a
 - **FLAC** – decoder required for reading source `.flac` files.
 - **mktorrent** – required for generating `.torrent` files.
 
-Install dependencies (example for Ubuntu/Debian):
+Install dependencies:
 ```bash
 sudo apt-get install ffmpeg lame flac mktorrent
 ```
-
-## 📦 Installation
-
-1. Clone or download this repository:
-   ```bash
-   git clone https://github.com/dirtymactruck/Black.Sys.FLAC.git
-   ```
-2. Navigate to the project directory:
-   ```bash
-   cd Black.Sys.FLAC
-   ```
-3. Ensure `ffmpeg`, `lame`, `flac`, and `mktorrent` are installed (see Requirements).
 
 ## ▶️ Usage
 
 1. Place your FLAC albums in a folder named `flac` (include "flac" in the folder name).
 2. Run the script:
    ```bash
-   python3 dirty.transcode.py
+   python3 dirty.flac.py
    ```
 3. Follow the prompts to:
    - Choose MP3 format: 320kbps, V0, or both.
@@ -49,7 +41,7 @@ sudo apt-get install ffmpeg lame flac mktorrent
 
 ### Example folder structure:
 ```
-Black.Sys.FLAC/
+DiRTY.FLAC/
 ├── flac/
 │   ├── Album_Name_FLAC/
 │   └── Another_Album_flac/
@@ -57,7 +49,7 @@ Black.Sys.FLAC/
 │   ├── Album_Name_MP3_320/
 │   └── Another_Album_MP3_V0/
 ├── torrents/
-├── dirty.transcode.py
+├── dirty.flac.py
 └── README.md
 ```
 
